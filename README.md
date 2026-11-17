@@ -1,122 +1,35 @@
-# ☕ Decorator Design Pattern — Spring Boot Demo
+# Decorator Design Pattern — Coffee Orders
 
-> A clean, portfolio-ready implementation of the **Decorator Design Pattern** using **Java 17 + Spring Boot 3**.
+The `Coffee` component interface is wrapped by `MilkDecorator`,
+`SugarDecorator`, `VanillaDecorator`, and `WhipCreamDecorator`.
+Each decorator adds a description and a cost without creating subclasses for
+every possible combination.
 
----
+The order response includes `decoratorChain`, so you can see how layers
+are composed and which price each layer produces.
 
-## Pattern Overview
+## Run
 
-The **Decorator Pattern** attaches additional responsibilities to an object *dynamically*.  
-It provides a flexible alternative to subclassing for extending functionality.
+Requires Java 17 and Maven.
 
-```
-Client → [VanillaDecorator → [MilkDecorator → [Espresso]]]
-```
-
-Each decorator wraps an inner component and delegates calls while adding its own behaviour — the client never knows the difference.
-
----
-
-## Project Structure
-
-```
-src/main/java/com/decorator/
-├── DecoratorDemoApplication.java
-│
-├── service/
-│   ├── Coffee.java              ← «interface» Component
-│   ├── Espresso.java            ← Concrete Component
-│   ├── SimpleCoffee.java        ← Concrete Component
-│   └── CoffeeBuilderService.java← Orchestrates pattern application
-│
-├── decorator/
-│   ├── CoffeeDecorator.java     ← «abstract» Base Decorator
-│   ├── MilkDecorator.java       ← Concrete Decorator
-│   ├── SugarDecorator.java      ← Concrete Decorator
-│   ├── WhipCreamDecorator.java  ← Concrete Decorator
-│   └── VanillaDecorator.java    ← Concrete Decorator
-│
-├── model/
-│   ├── CoffeeOrderRequest.java
-│   └── CoffeeOrderResponse.java ← Includes decorator chain trace
-│
-└── controller/
-    └── CoffeeController.java    ← REST endpoints
-
-frontend/
-└── index.html                   ← Vanilla JS UI (zero dependencies)
-```
-
----
-
-## API Endpoints
-
-### `POST /api/coffee/order`
-Build a coffee dynamically with decorators.
-
-**Request:**
-```json
-{
-  "baseType": "espresso",
-  "addons": ["milk", "vanilla", "whip"]
-}
-```
-
-**Response:**
-```json
-{
-  "baseType": "espresso",
-  "addons": ["milk", "vanilla", "whip"],
-  "description": "Espresso, Milk, Vanilla, Whip Cream",
-  "totalCost": 2.60,
-  "decoratorChain": [
-    { "layer": "Base: Espresso",       "descriptionSoFar": "Espresso",                         "costSoFar": 1.50 },
-    { "layer": "+MilkDecorator",       "descriptionSoFar": "Espresso, Milk",                   "costSoFar": 1.75 },
-    { "layer": "+VanillaDecorator",    "descriptionSoFar": "Espresso, Milk, Vanilla",           "costSoFar": 2.10 },
-    { "layer": "+WhipCreamDecorator",  "descriptionSoFar": "Espresso, Milk, Vanilla, Whip Cream", "costSoFar": 2.60 }
-  ]
-}
-```
-
-### `GET /api/coffee/options`
-Returns all available bases and add-ons with their prices.
-
----
-
-## How to Run
-
-### Backend
 ```bash
-cd decorator-demo
-./mvnw spring-boot:run
-# API available at http://localhost:8080
+mvn spring-boot:run
+mvn test
 ```
 
-### Frontend
-Open `frontend/index.html` directly in a browser — no build step required.
+```bash
+curl -X POST http://localhost:8080/api/coffee/order \
+  -H 'Content-Type: application/json' \
+  -d '{"baseType":"espresso","addons":["milk","vanilla"]}'
+```
 
----
+Supported bases: `espresso`, `simple`. Add-ons: `milk`, `sugar`,
+`whip`, `vanilla`. Add-ons are applied in order (duplicates are allowed).
+Omitting `addons` produces a plain coffee; invalid or null items return
+HTTP 400 instead of silently changing the order.
 
-## Tech Stack
+This is a teaching simulation; it uses `double` for displayed prices.
+Production payment amounts should instead use integer minor units or
+`BigDecimal`.
 
-| Layer     | Technology           |
-|-----------|----------------------|
-| Language  | Java 17              |
-| Framework | Spring Boot 3.2      |
-| Build     | Maven                |
-| Frontend  | Vanilla HTML/CSS/JS  |
-| Pattern   | Decorator (GoF)      |
-
----
-
-## Key Design Decisions
-
-- **Interface-based** — `Coffee` interface ensures both components and decorators are interchangeable
-- **Open/Closed Principle** — Add new decorators without modifying existing code
-- **Chain tracing** — Response includes the full wrapping chain for visualization/debugging
-- **Zero frontend deps** — Single `index.html` with no frameworks or build tools
-
----
-
-*GoF Decorator Pattern · Backend Demo · Java 17 · Spring Boot 3*
-![img.png](img.png)
+![Demo screenshot](img.png)
