@@ -33,6 +33,11 @@ public class CoffeeController {
         return ResponseEntity.ok(response);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidOrder(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+    }
+
     @GetMapping("/options")
     public ResponseEntity<Map<String, Object>> options() {
         return ResponseEntity.ok(Map.of(

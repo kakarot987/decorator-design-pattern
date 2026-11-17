@@ -8,45 +8,42 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
- * CoffeeBuilderService — orchestrates Decorator Pattern application.
- *
- * Flow:
- *   1. Create a base Concrete Component (Espresso / SimpleCoffee)
- *   2. Dynamically wrap it in Concrete Decorators based on the request
- *   3. Return full chain trace for frontend visualization
+ * Applies concrete decorators in requested order and records each layer.
+ * Invalid input must never silently alter the requested composition.
  */
 @Service
 public class CoffeeBuilderService {
 
     public CoffeeOrderResponse buildOrder(CoffeeOrderRequest request) {
-        // Step 1: Create base component
+        if (request == null) {
+            throw new IllegalArgumentException("Coffee order is required");
+        }
+
         Coffee coffee = createBase(request.getBaseType());
-
         List<DecoratorStep> chain = new ArrayList<>();
-        chain.add(new DecoratorStep(
-                "Base: " + coffee.getDescription(),
-                coffee.getDescription(),
-                coffee.getCost()
-        ));
+        List<String> normalizedAddons = new ArrayList<>();
+        chain.add(new DecoratorStep("Base: " + coffee.getDescription(),
+                coffee.getDescription(), roundCost(coffee.getCost())));
 
-        // Step 2: Apply each decorator in order
         if (request.getAddons() != null) {
             for (String addon : request.getAddons()) {
-                coffee = applyDecorator(coffee, addon);
+                String name = normalizeAddon(addon);
+                coffee = applyDecorator(coffee, name);
+                normalizedAddons.add(name);
                 chain.add(new DecoratorStep(
-                        "+" + capitalize(addon) + "Decorator",
+                        "+" + capitalize(name) + "Decorator",
                         coffee.getDescription(),
                         roundCost(coffee.getCost())
                 ));
             }
         }
 
-        // Step 3: Build response
         return new CoffeeOrderResponse(
-                request.getBaseType(),
-                request.getAddons(),
+                request.getBaseType().trim().toLowerCase(Locale.ROOT),
+                List.copyOf(normalizedAddons),
                 coffee.getDescription(),
                 roundCost(coffee.getCost()),
                 chain
@@ -54,19 +51,35 @@ public class CoffeeBuilderService {
     }
 
     private Coffee createBase(String baseType) {
-        if ("espresso".equalsIgnoreCase(baseType)) {
-            return new Espresso();
+        if (baseType == null || baseType.isBlank()) {
+            throw new IllegalArgumentException("Base coffee type is required");
         }
-        return new SimpleCoffee();
+        return switch (baseType.trim().toLowerCase(Locale.ROOT)) {
+            case "espresso" -> new Espresso();
+            case "simple" -> new SimpleCoffee();
+            default -> throw new IllegalArgumentException(
+                    "Unknown coffee base: " + baseType + ". Use espresso or simple");
+        };
+    }
+
+    private String normalizeAddon(String addon) {
+        if (addon == null || addon.isBlank()) {
+            throw new IllegalArgumentException("Add-on must not be null or blank");
+        }
+        String name = addon.trim().toLowerCase(Locale.ROOT);
+        if (!List.of("milk", "sugar", "whip", "vanilla").contains(name)) {
+            throw new IllegalArgumentException("Unknown add-on: " + addon);
+        }
+        return name;
     }
 
     private Coffee applyDecorator(Coffee coffee, String addon) {
-        return switch (addon.toLowerCase()) {
-            case "milk"    -> new MilkDecorator(coffee);
-            case "sugar"   -> new SugarDecorator(coffee);
-            case "whip"    -> new WhipCreamDecorator(coffee);
+        return switch (addon) {
+            case "milk" -> new MilkDecorator(coffee);
+            case "sugar" -> new SugarDecorator(coffee);
+            case "whip" -> new WhipCreamDecorator(coffee);
             case "vanilla" -> new VanillaDecorator(coffee);
-            default        -> coffee;
+            default -> throw new IllegalArgumentException("Unknown add-on: " + addon);
         };
     }
 
@@ -75,7 +88,6 @@ public class CoffeeBuilderService {
     }
 
     private String capitalize(String s) {
-        if (s == null || s.isEmpty()) return s;
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 }
