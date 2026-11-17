@@ -38,6 +38,18 @@ class CoffeeBuilderServiceTest {
     }
 
     @Test
+    void repeatedDecoratorsRemainSeparateOrderedLayers() {
+        CoffeeOrderResponse response = service.buildOrder(
+                request(" ESPRESSO ", List.of(" Milk ", "MILK", "sugar")));
+
+        assertEquals("espresso", response.getBaseType());
+        assertEquals(List.of("milk", "milk", "sugar"), response.getAddons());
+        assertEquals(4, response.getDecoratorChain().size());
+        assertEquals(2.10, response.getTotalCost(), 0.001);
+        assertEquals("Espresso, Milk, Milk, Sugar", response.getDescription());
+    }
+
+    @Test
     void rejectsUnknownBlankOrNullAddonsInsteadOfSilentlyIgnoringThem() {
         assertThrows(IllegalArgumentException.class,
                 () -> service.buildOrder(request("espresso", List.of("caramel"))));
